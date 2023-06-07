@@ -1,6 +1,6 @@
 name: camera_pkg
 description: Camera package combined with image quality compressor and cropper.
-version: 0.0.1
+version: 0.0.8
 homepage:
 
 environment:

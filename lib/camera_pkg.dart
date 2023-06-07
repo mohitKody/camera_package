@@ -15,7 +15,7 @@ class CameraControl extends StatefulWidget {
   /// Default Constructor
   final int? compressQuality;
 
-   CameraControl({super.key, this.compressQuality});
+  CameraControl({super.key, this.compressQuality});
 
   @override
   State<CameraControl> createState() {
@@ -27,7 +27,7 @@ class CameraControl extends StatefulWidget {
 IconData getCameraLensIcon(CameraLensDirection direction) {
   switch (direction) {
     case CameraLensDirection.back:
-      return Icons.camera_rear;
+      return Icons.photo_camera_back;
     case CameraLensDirection.front:
       return Icons.camera_front;
     case CameraLensDirection.external:
@@ -77,6 +77,7 @@ class _CameraControlState extends State<CameraControl>
       onNewCameraSelected(cameraDescription);
     }
   }
+
   @override
   void initState() {
     super.initState();
@@ -129,9 +130,9 @@ class _CameraControlState extends State<CameraControl>
       return;
     }
 
-      cameraController.dispose();
-
+    cameraController.dispose();
   }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final CameraController? cameraController = controller;
@@ -155,8 +156,12 @@ class _CameraControlState extends State<CameraControl>
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Camera example',style: TextStyle(color: Colors.white,),),
-
+        title: const Text(
+          'Camera example',
+          style: TextStyle(
+            color: Colors.white,
+          ),
+        ),
       ),
       body: Column(
         children: <Widget>[
@@ -185,15 +190,59 @@ class _CameraControlState extends State<CameraControl>
           Padding(
             padding: const EdgeInsets.all(5.0),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
-                // _cameraTogglesRowWidget(),
-                _thumbnailWidget(),
+                _cameraTogglesRowWidget(),
+                Row(
+                  children: [
+                    Text(
+                      '$textValue',
+                      style: TextStyle(fontSize: 15),
+                    ),
+                    SizedBox(
+                      width: 10,
+                    ),
+                    Transform.scale(
+                        scale: 0.8,
+                        child: Switch(
+                          onChanged: toggleSwitch,
+                          value: isSwitched,
+                          activeColor: Colors.blue,
+                          activeTrackColor: Colors.grey,
+                          inactiveThumbColor: Colors.black,
+                          inactiveTrackColor: Colors.grey,
+                        )),
+                    SizedBox(
+                      width: 10,
+                    ),
+                  ],
+                )
+                // _thumbnailWidget(),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  bool isSwitched = false;
+  var textValue = 'Image';
+
+  void toggleSwitch(bool value) {
+    if (isSwitched == false) {
+      setState(() {
+        isSwitched = true;
+        textValue = 'Video';
+      });
+      print('Switch Button is ON');
+    } else {
+      setState(() {
+        isSwitched = false;
+        textValue = 'Image';
+      });
+      print('Switch Button is OFF');
+    }
   }
 
   /// Display the preview from the camera (or a message if the preview is not available).
@@ -539,69 +588,71 @@ class _CameraControlState extends State<CameraControl>
   Widget _captureControlRowWidget() {
     final CameraController? cameraController = controller;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: <Widget>[
-        IconButton(
-          icon: const Icon(Icons.camera_alt),
-          color: Colors.blue,
-          onPressed: cameraController != null &&
-                  cameraController.value.isInitialized &&
-                  !cameraController.value.isRecordingVideo
-              ? onTakePictureButtonPressed
-              : null,
-        ),
-        _cameraTogglesRowWidget()
-        // IconButton(
-        //   icon: const Icon(Icons.videocam),
-        //   color: Colors.blue,
-        //   onPressed: cameraController != null &&
-        //           cameraController.value.isInitialized &&
-        //           !cameraController.value.isRecordingVideo
-        //       ? onVideoRecordButtonPressed
-        //       : null,
-        // ),
-        // IconButton(
-        //   icon: cameraController != null &&
-        //           cameraController.value.isRecordingPaused
-        //       ? const Icon(Icons.play_arrow)
-        //       : const Icon(Icons.pause),
-        //   color: Colors.blue,
-        //   onPressed: cameraController != null &&
-        //           cameraController.value.isInitialized &&
-        //           cameraController.value.isRecordingVideo
-        //       ? (cameraController.value.isRecordingPaused)
-        //           ? onResumeButtonPressed
-        //           : onPauseButtonPressed
-        //       : null,
-        // ),
-        // IconButton(
-        //   icon: const Icon(Icons.stop),
-        //   color: Colors.red,
-        //   onPressed: cameraController != null &&
-        //           cameraController.value.isInitialized &&
-        //           cameraController.value.isRecordingVideo
-        //       ? onStopButtonPressed
-        //       : null,
-        // ),
-        // IconButton(
-        //   icon: const Icon(Icons.pause_presentation),
-        //   color:
-        //       cameraController != null && cameraController.value.isPreviewPaused
-        //           ? Colors.red
-        //           : Colors.blue,
-        //   onPressed:
-        //       cameraController == null ? null : onPausePreviewButtonPressed,
-        // ),
-      ],
-    );
+    return isSwitched == false
+        ? IconButton(
+            icon: const Icon(Icons.camera,size: 30,),
+            color: Colors.blue,
+            onPressed: cameraController != null &&
+                    cameraController.value.isInitialized &&
+                    !cameraController.value.isRecordingVideo
+                ? onTakePictureButtonPressed
+                : null,
+          )
+
+        : Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.videocam,size: 30,),
+                color: Colors.blue,
+                onPressed: cameraController != null &&
+                        cameraController.value.isInitialized &&
+                        !cameraController.value.isRecordingVideo
+                    ? onVideoRecordButtonPressed
+                    : null,
+              ),
+              IconButton(
+                icon: cameraController != null &&
+                        cameraController.value.isRecordingPaused
+                    ? const Icon(Icons.play_arrow,size: 30,)
+                    : const Icon(Icons.pause,size: 30,),
+                color: Colors.blue,
+                onPressed: cameraController != null &&
+                        cameraController.value.isInitialized &&
+                        cameraController.value.isRecordingVideo
+                    ? (cameraController.value.isRecordingPaused)
+                        ? onResumeButtonPressed
+                        : onPauseButtonPressed
+                    : null,
+              ),
+              IconButton(
+                icon: const Icon(Icons.stop,size: 30,),
+                color: Colors.red,
+                onPressed: cameraController != null &&
+                        cameraController.value.isInitialized &&
+                        cameraController.value.isRecordingVideo
+                    ? onStopButtonPressed
+                    : null,
+              ),
+              IconButton(
+                icon: const Icon(Icons.pause_presentation,size: 30,),
+                color: cameraController != null &&
+                        cameraController.value.isPreviewPaused
+                    ? Colors.red
+                    : Colors.blue,
+                onPressed: cameraController == null
+                    ? null
+                    : onPausePreviewButtonPressed,
+              ),
+            ],
+          );
   }
 
   /// Display a row of toggle to select the camera (or a message if no camera is available).
   Widget _cameraTogglesRowWidget() {
     final List<Widget> toggles = <Widget>[];
 
-    void onChanged(CameraDescription? description) {
+     onChanged(CameraDescription? description) {
       if (description == null) {
         return;
       }
@@ -619,7 +670,9 @@ class _CameraControlState extends State<CameraControl>
         toggles.add(
           SizedBox(
             width: 90.0,
-            child: RadioListTile<CameraDescription>(
+            child:
+
+            RadioListTile<CameraDescription>(
               title: Icon(getCameraLensIcon(cameraDescription.lensDirection)),
               groupValue: controller?.description,
               value: cameraDescription,
@@ -666,7 +719,8 @@ class _CameraControlState extends State<CameraControl>
   Future<void> _initializeCameraController(
       CameraDescription cameraDescription) async {
     final CameraController cameraController = CameraController(
-      cameraDescription, ResolutionPreset.max,
+      cameraDescription,
+      ResolutionPreset.max,
       enableAudio: enableAudio,
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
@@ -742,7 +796,6 @@ class _CameraControlState extends State<CameraControl>
   void onTakePictureButtonPressed() {
     takePicture().then((XFile? file) async {
       if (mounted) {
-
         CroppedFile? croppedFile = await ImageCropper().cropImage(
           sourcePath: file!.path,
           aspectRatioPresets: [
@@ -769,7 +822,6 @@ class _CameraControlState extends State<CameraControl>
           ],
         );
 
-
         setState(() {
           imageFile = XFile(croppedFile!.path);
           videoController?.dispose();
@@ -777,7 +829,7 @@ class _CameraControlState extends State<CameraControl>
           controller?.dispose();
         });
 
-        Navigator.pop(context,croppedFile);
+        Navigator.pop(context, croppedFile);
 
         // showInSnackBar('Picture saved to ${file.path}');
       }
@@ -882,6 +934,8 @@ class _CameraControlState extends State<CameraControl>
       if (file != null) {
         showInSnackBar('Video recorded to ${file.path}');
         videoFile = file;
+        Navigator.pop(context, videoFile);
+
         _startVideoPlayer();
       }
     });
@@ -1108,11 +1162,11 @@ class CameraApp extends StatelessWidget {
   /// Default Constructor
 
   /// Default Constructor
-   CameraApp({super.key});
+  CameraApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return  MaterialApp(
+    return MaterialApp(
       home: CameraControl(),
     );
   }
@@ -1130,5 +1184,5 @@ Future<void> main() async {
   } on CameraException catch (e) {
     _logError(e.code, e.description);
   }
-  runApp( CameraApp());
+  runApp(CameraApp());
 }
