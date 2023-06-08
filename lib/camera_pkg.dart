@@ -4,18 +4,30 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:camera_pkg/cropper.dart';
+import 'package:crop/crop.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:video_player/video_player.dart';
 
+import 'centered_slider_track_shape.dart';
+import 'dart:io';
+
+import 'package:crop/crop.dart';
+import 'package:flutter/material.dart';
+
+import 'centered_slider_track_shape.dart';
+import 'dart:ui' as ui;
+
 /// Camera example home widget.
 class CameraControl extends StatefulWidget {
   /// Default Constructor
   final int? compressQuality;
+  final Color? primaryColor;
 
-  CameraControl({super.key, this.compressQuality});
+  CameraControl({super.key, this.compressQuality,  this.primaryColor});
 
   @override
   State<CameraControl> createState() {
@@ -150,6 +162,63 @@ class _CameraControlState extends State<CameraControl>
   }
 
   // #enddocregion AppLifecycle
+  PageController pageController = PageController();
+  final cropController = CropController(aspectRatio: 1000 / 667.0);
+  double _rotation = 0;
+  BoxShape shape = BoxShape.rectangle;
+
+  void _cropImage() async {
+    final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final cropped = await cropController.crop(pixelRatio: pixelRatio);
+
+    if (cropped == null) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    // Navigator.of(context).push(
+    //   MaterialPageRoute(
+    //     builder: (context) => Scaffold(
+    //       appBar: AppBar(
+    //         title: const Text('Crop Result'),
+    //         centerTitle: true,
+    //         actions: [
+    //           Builder(
+    //             builder: (context) => IconButton(
+    //               icon: const Icon(Icons.save),
+    //               onPressed: () async {
+    //                 // final status = await Permission.storage.request();
+    //                 // if (status == PermissionStatus.granted) {
+    // Navigator.pop(context,cropped);
+    await _saveScreenShot(cropped)
+        .then((value) => Navigator.pop(context, value));
+    //                 //   if (!mounted) {
+    //                 //     return;
+    //                 //   }
+    //                 //   ScaffoldMessenger.of(context).showSnackBar(
+    //                 //     const SnackBar(
+    //                 //       content: Text('Saved to gallery.'),
+    //                 //     ),
+    //                 //   );
+    //                 // }
+    //               },
+    //             ),
+    //           ),
+    //         ],
+    //       ),
+    //       body: Center(
+    //         child: RawImage(
+    //           image: cropped,
+    //         ),
+    //       ),
+    //     ),
+    //     fullscreenDialog: true,
+    //   ),
+    // );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,64 +231,259 @@ class _CameraControlState extends State<CameraControl>
             color: Colors.white,
           ),
         ),
+        actions: [
+          GestureDetector(
+            onTap: () {
+              _cropImage();
+            },
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12.0),
+              child: Icon(
+                Icons.arrow_forward,
+                color: Colors.white,
+              ),
+            ),
+          )
+        ],
       ),
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black,
-                border: Border.all(
-                  color:
-                      controller != null && controller!.value.isRecordingVideo
-                          ? Colors.redAccent
+      body: PageView(
+        controller: pageController,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          Column(
+            children: <Widget>[
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    border: Border.all(
+                      color: controller != null &&
+                              controller!.value.isRecordingVideo
+                          ? Colors.black
                           : Colors.grey,
-                  width: 3.0,
+                      width:controller != null &&
+                          controller!.value.isRecordingVideo
+                          ? 0.0 : 0.0,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(1.0),
+                    child: Center(
+                      child: Stack(
+                        children: [
+                          _cameraPreviewWidget(),
+                          (controller == null ||
+                                  !controller!.value.isInitialized)
+                              ? SizedBox()
+                              : Positioned(
+                                  right: 0,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.flash_on),
+                                        color: widget.primaryColor,
+                                        onPressed: controller != null
+                                            ? onFlashModeButtonPressed
+                                            : null,
+                                      ),
+                                      _flashModeControlRowWidget(),
+                                    ],
+                                  ),
+                                ),
+                          Positioned(
+                              bottom: 0,
+                              child:
+                                  Container(
+                                    width: MediaQuery.of(context).size.width,
+                                      color: Colors.white.withOpacity(0.5),
+                                      child: _captureControlRowWidget())),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(1.0),
-                child: Center(
-                  child: _cameraPreviewWidget(),
-                ),
-              ),
-            ),
-          ),
-          _captureControlRowWidget(),
-          // _modeControlRowWidget(),
-          Padding(
-            padding: const EdgeInsets.all(5.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                _cameraTogglesRowWidget(),
-                Row(
-                  children: [
-                    Text(
-                      '$textValue',
-                      style: TextStyle(fontSize: 15),
-                    ),
-                    SizedBox(
-                      width: 10,
-                    ),
-                    Transform.scale(
-                        scale: 0.8,
-                        child: Switch(
-                          onChanged: toggleSwitch,
-                          value: isSwitched,
-                          activeColor: Colors.blue,
-                          activeTrackColor: Colors.grey,
-                          inactiveThumbColor: Colors.black,
-                          inactiveTrackColor: Colors.grey,
-                        )),
-                    SizedBox(
-                      width: 10,
-                    ),
+              // _captureControlRowWidget(),
+              // _modeControlRowWidget(),
+              Padding(
+                padding: const EdgeInsets.all(5.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: <Widget>[
+                    _cameraTogglesRowWidget(),
+                    Row(
+                      children: [
+                        Text(
+                          '$textValue',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        const SizedBox(
+                          width: 10,
+                        ),
+                        Transform.scale(
+                            scale: 0.8,
+                            child: Switch(
+                              onChanged: toggleSwitch,
+                              value: isSwitched,
+                              activeColor: widget.primaryColor,
+                              activeTrackColor: Colors.grey,
+                              inactiveThumbColor: Colors.black,
+                              inactiveTrackColor: Colors.grey,
+                            )),
+                        const SizedBox(
+                          width: 10,
+                        ),
+                      ],
+                    )
+                    // _thumbnailWidget(),
                   ],
-                )
-                // _thumbnailWidget(),
-              ],
-            ),
+                ),
+              ),
+            ],
+          ),
+
+          ///
+          Column(
+            children: <Widget>[
+              Expanded(
+                child: Container(
+                  color: Colors.black,
+                  padding: const EdgeInsets.all(8),
+                  child: Crop(
+                    onChanged: (decomposition) {
+                      if (_rotation != decomposition.rotation) {
+                        setState(() {
+                          _rotation =
+                              ((decomposition.rotation + 180) % 360) - 180;
+                        });
+                      }
+
+                      // print(
+                      //     "Scale : ${decomposition.scale}, Rotation: ${decomposition.rotation}, translation: ${decomposition.translation}");
+                    },
+                    controller: cropController,
+                    shape: shape,
+                    /* It's very important to set `fit: BoxFit.cover`.
+                   Do NOT remove this line.
+                   There are a lot of issues on github repo by people who remove this line and their image is not shown correctly.
+                */
+                    // foreground: IgnorePointer(
+                    //   child: Container(
+                    //     alignment: Alignment.bottomRight,
+                    //     child: const Text(
+                    //       'Foreground Object',
+                    //       style: TextStyle(color: Colors.red),
+                    //     ),
+                    //   ),
+                    // ),
+                    helper: shape == BoxShape.rectangle
+                        ? Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                          )
+                        : null,
+                    child: imageFile != null
+                        ? Image.file(
+                            File(imageFile!.path),
+                            fit: BoxFit.cover,
+                          )
+                        : Image.asset(''),
+                  ),
+                ),
+              ),
+              Row(
+                children: <Widget>[
+                  IconButton(
+                    icon: const Icon(Icons.undo),
+                    tooltip: 'Undo',
+                    onPressed: () {
+                      cropController.rotation = 0;
+                      cropController.scale = 1;
+                      cropController.offset = Offset.zero;
+                      setState(() {
+                        _rotation = 0;
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: SliderTheme(
+                      data: Theme.of(context).sliderTheme.copyWith(
+                            trackShape: CenteredRectangularSliderTrackShape(),
+                          ),
+                      child: Slider(
+                        divisions: 360,
+                        value: _rotation,
+                        min: -180,
+                        max: 180,
+                        label: '$_rotation°',
+                        onChanged: (n) {
+                          setState(() {
+                            _rotation = n.roundToDouble();
+                            cropController.rotation = _rotation;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  PopupMenuButton<BoxShape>(
+                    icon: const Icon(Icons.crop_free),
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: BoxShape.rectangle,
+                        child: Text("Box"),
+                      ),
+                      const PopupMenuItem(
+                        value: BoxShape.circle,
+                        child: Text("Oval"),
+                      ),
+                    ],
+                    tooltip: 'Crop Shape',
+                    onSelected: (x) {
+                      setState(() {
+                        shape = x;
+                      });
+                    },
+                  ),
+                  PopupMenuButton<double>(
+                    icon: const Icon(Icons.aspect_ratio),
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 1000 / 667.0,
+                        child: Text("Original"),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: 16.0 / 9.0,
+                        child: Text("16:9"),
+                      ),
+                      const PopupMenuItem(
+                        value: 4.0 / 3.0,
+                        child: Text("4:3"),
+                      ),
+                      const PopupMenuItem(
+                        value: 1,
+                        child: Text("1:1"),
+                      ),
+                      const PopupMenuItem(
+                        value: 3.0 / 4.0,
+                        child: Text("3:4"),
+                      ),
+                      const PopupMenuItem(
+                        value: 9.0 / 16.0,
+                        child: Text("9:16"),
+                      ),
+                    ],
+                    tooltip: 'Aspect Ratio',
+                    onSelected: (x) {
+                      cropController.aspectRatio = x;
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
@@ -262,18 +526,22 @@ class _CameraControlState extends State<CameraControl>
       return Listener(
         onPointerDown: (_) => _pointers++,
         onPointerUp: (_) => _pointers--,
-        child: CameraPreview(
-          controller!,
-          child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onScaleStart: _handleScaleStart,
-              onScaleUpdate: _handleScaleUpdate,
-              onTapDown: (TapDownDetails details) =>
-                  onViewFinderTap(details, constraints),
-            );
-          }),
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width,
+          height: MediaQuery.of(context).size.height,
+          child: CameraPreview(
+            controller!,
+            child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onScaleStart: _handleScaleStart,
+                onScaleUpdate: _handleScaleUpdate,
+                onTapDown: (TapDownDetails details) =>
+                    onViewFinderTap(details, constraints),
+              );
+            }),
+          ),
         ),
       );
     }
@@ -346,7 +614,7 @@ class _CameraControlState extends State<CameraControl>
           children: <Widget>[
             IconButton(
               icon: const Icon(Icons.flash_on),
-              color: Colors.blue,
+              color: widget.primaryColor,
               onPressed: controller != null ? onFlashModeButtonPressed : null,
             ),
             // The exposure and focus mode are currently not supported on the web.
@@ -354,14 +622,14 @@ class _CameraControlState extends State<CameraControl>
                 ? <Widget>[
                     IconButton(
                       icon: const Icon(Icons.exposure),
-                      color: Colors.blue,
+                      color: widget.primaryColor,
                       onPressed: controller != null
                           ? onExposureModeButtonPressed
                           : null,
                     ),
                     IconButton(
                       icon: const Icon(Icons.filter_center_focus),
-                      color: Colors.blue,
+                      color: widget.primaryColor,
                       onPressed:
                           controller != null ? onFocusModeButtonPressed : null,
                     )
@@ -369,21 +637,21 @@ class _CameraControlState extends State<CameraControl>
                 : <Widget>[],
             IconButton(
               icon: Icon(enableAudio ? Icons.volume_up : Icons.volume_mute),
-              color: Colors.blue,
+              color: widget.primaryColor,
               onPressed: controller != null ? onAudioModeButtonPressed : null,
             ),
             IconButton(
               icon: Icon(controller?.value.isCaptureOrientationLocked ?? false
                   ? Icons.screen_lock_rotation
                   : Icons.screen_rotation),
-              color: Colors.blue,
+              color: widget.primaryColor,
               onPressed: controller != null
                   ? onCaptureOrientationLockButtonPressed
                   : null,
             ),
           ],
         ),
-        _flashModeControlRowWidget(),
+        // _flashModeControlRowWidget(),
         _exposureModeControlRowWidget(),
         _focusModeControlRowWidget(),
       ],
@@ -394,14 +662,14 @@ class _CameraControlState extends State<CameraControl>
     return SizeTransition(
       sizeFactor: _flashModeControlRowAnimation,
       child: ClipRect(
-        child: Row(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: <Widget>[
             IconButton(
               icon: const Icon(Icons.flash_off),
               color: controller?.value.flashMode == FlashMode.off
                   ? Colors.orange
-                  : Colors.blue,
+                  : widget.primaryColor,
               onPressed: controller != null
                   ? () => onSetFlashModeButtonPressed(FlashMode.off)
                   : null,
@@ -410,7 +678,7 @@ class _CameraControlState extends State<CameraControl>
               icon: const Icon(Icons.flash_auto),
               color: controller?.value.flashMode == FlashMode.auto
                   ? Colors.orange
-                  : Colors.blue,
+                  : widget.primaryColor,
               onPressed: controller != null
                   ? () => onSetFlashModeButtonPressed(FlashMode.auto)
                   : null,
@@ -419,7 +687,7 @@ class _CameraControlState extends State<CameraControl>
               icon: const Icon(Icons.flash_on),
               color: controller?.value.flashMode == FlashMode.always
                   ? Colors.orange
-                  : Colors.blue,
+                  : widget.primaryColor,
               onPressed: controller != null
                   ? () => onSetFlashModeButtonPressed(FlashMode.always)
                   : null,
@@ -428,7 +696,7 @@ class _CameraControlState extends State<CameraControl>
               icon: const Icon(Icons.highlight),
               color: controller?.value.flashMode == FlashMode.torch
                   ? Colors.orange
-                  : Colors.blue,
+                  : widget.primaryColor,
               onPressed: controller != null
                   ? () => onSetFlashModeButtonPressed(FlashMode.torch)
                   : null,
@@ -445,14 +713,14 @@ class _CameraControlState extends State<CameraControl>
       // ignore: deprecated_member_use
       primary: controller?.value.exposureMode == ExposureMode.auto
           ? Colors.orange
-          : Colors.blue,
+          : widget.primaryColor,
     );
     final ButtonStyle styleLocked = TextButton.styleFrom(
       // TODO(darrenaustin): Migrate to new API once it lands in stable: https://github.com/flutter/flutter/issues/105724
       // ignore: deprecated_member_use
       primary: controller?.value.exposureMode == ExposureMode.locked
           ? Colors.orange
-          : Colors.blue,
+          : widget.primaryColor,
     );
 
     return SizeTransition(
@@ -532,14 +800,14 @@ class _CameraControlState extends State<CameraControl>
       // ignore: deprecated_member_use
       primary: controller?.value.focusMode == FocusMode.auto
           ? Colors.orange
-          : Colors.blue,
+          : widget.primaryColor,
     );
     final ButtonStyle styleLocked = TextButton.styleFrom(
       // TODO(darrenaustin): Migrate to new API once it lands in stable: https://github.com/flutter/flutter/issues/105724
       // ignore: deprecated_member_use
       primary: controller?.value.focusMode == FocusMode.locked
           ? Colors.orange
-          : Colors.blue,
+          : widget.primaryColor,
     );
 
     return SizeTransition(
@@ -588,71 +856,90 @@ class _CameraControlState extends State<CameraControl>
   Widget _captureControlRowWidget() {
     final CameraController? cameraController = controller;
 
-    return isSwitched == false
-        ? IconButton(
-            icon: const Icon(Icons.camera,size: 30,),
-            color: Colors.blue,
-            onPressed: cameraController != null &&
-                    cameraController.value.isInitialized &&
-                    !cameraController.value.isRecordingVideo
-                ? onTakePictureButtonPressed
-                : null,
-          )
-
-        : Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.videocam,size: 30,),
-                color: Colors.blue,
+    return (controller == null || !controller!.value.isInitialized)
+        ? SizedBox()
+        : isSwitched == false
+            ? IconButton(
+                icon: const Icon(
+                  Icons.camera,
+                  size: 40,
+                ),
+                color: widget.primaryColor,
                 onPressed: cameraController != null &&
                         cameraController.value.isInitialized &&
                         !cameraController.value.isRecordingVideo
-                    ? onVideoRecordButtonPressed
+                    ? onTakePictureButtonPressed
                     : null,
-              ),
-              IconButton(
-                icon: cameraController != null &&
-                        cameraController.value.isRecordingPaused
-                    ? const Icon(Icons.play_arrow,size: 30,)
-                    : const Icon(Icons.pause,size: 30,),
-                color: Colors.blue,
-                onPressed: cameraController != null &&
-                        cameraController.value.isInitialized &&
-                        cameraController.value.isRecordingVideo
-                    ? (cameraController.value.isRecordingPaused)
-                        ? onResumeButtonPressed
-                        : onPauseButtonPressed
-                    : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.stop,size: 30,),
-                color: Colors.red,
-                onPressed: cameraController != null &&
-                        cameraController.value.isInitialized &&
-                        cameraController.value.isRecordingVideo
-                    ? onStopButtonPressed
-                    : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.pause_presentation,size: 30,),
-                color: cameraController != null &&
-                        cameraController.value.isPreviewPaused
-                    ? Colors.red
-                    : Colors.blue,
-                onPressed: cameraController == null
-                    ? null
-                    : onPausePreviewButtonPressed,
-              ),
-            ],
-          );
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.videocam,
+                      size: 40,
+                    ),
+                    color: widget.primaryColor,
+                    onPressed: cameraController != null &&
+                            cameraController.value.isInitialized &&
+                            !cameraController.value.isRecordingVideo
+                        ? onVideoRecordButtonPressed
+                        : null,
+                  ),
+                  IconButton(
+                    icon: cameraController != null &&
+                            cameraController.value.isRecordingPaused
+                        ? const Icon(
+                            Icons.play_arrow,
+                            size: 40,
+                          )
+                        : const Icon(
+                            Icons.pause,
+                            size: 40,
+                          ),
+                    color: widget.primaryColor,
+                    onPressed: cameraController != null &&
+                            cameraController.value.isInitialized &&
+                            cameraController.value.isRecordingVideo
+                        ? (cameraController.value.isRecordingPaused)
+                            ? onResumeButtonPressed
+                            : onPauseButtonPressed
+                        : null,
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.stop,
+                      size: 30,
+                    ),
+                    color: Colors.red,
+                    onPressed: cameraController != null &&
+                            cameraController.value.isInitialized &&
+                            cameraController.value.isRecordingVideo
+                        ? onStopButtonPressed
+                        : null,
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.pause_presentation,
+                      size: 30,
+                    ),
+                    color: cameraController != null &&
+                            cameraController.value.isPreviewPaused
+                        ? Colors.red
+                        : widget.primaryColor,
+                    onPressed: cameraController == null
+                        ? null
+                        : onPausePreviewButtonPressed,
+                  ),
+                ],
+              );
   }
 
   /// Display a row of toggle to select the camera (or a message if no camera is available).
   Widget _cameraTogglesRowWidget() {
     final List<Widget> toggles = <Widget>[];
 
-     onChanged(CameraDescription? description) {
+    onChanged(CameraDescription? description) {
       if (description == null) {
         return;
       }
@@ -670,9 +957,7 @@ class _CameraControlState extends State<CameraControl>
         toggles.add(
           SizedBox(
             width: 90.0,
-            child:
-
-            RadioListTile<CameraDescription>(
+            child: RadioListTile<CameraDescription>(
               title: Icon(getCameraLensIcon(cameraDescription.lensDirection)),
               groupValue: controller?.description,
               value: cameraDescription,
@@ -796,40 +1081,22 @@ class _CameraControlState extends State<CameraControl>
   void onTakePictureButtonPressed() {
     takePicture().then((XFile? file) async {
       if (mounted) {
-        CroppedFile? croppedFile = await ImageCropper().cropImage(
-          sourcePath: file!.path,
-          aspectRatioPresets: [
-            CropAspectRatioPreset.square,
-            CropAspectRatioPreset.ratio3x2,
-            CropAspectRatioPreset.original,
-            CropAspectRatioPreset.ratio4x3,
-            CropAspectRatioPreset.ratio16x9
-          ],
-          compressQuality: widget.compressQuality ?? 90,
-          uiSettings: [
-            AndroidUiSettings(
-                toolbarTitle: 'Crop',
-                toolbarColor: Colors.black,
-                toolbarWidgetColor: Colors.white,
-                initAspectRatio: CropAspectRatioPreset.original,
-                lockAspectRatio: false),
-            IOSUiSettings(
-              title: 'Cropper',
-            ),
-            WebUiSettings(
-              context: context,
-            ),
-          ],
-        );
+        // Navigator.push(
+        //     context,
+        //     MaterialPageRoute(
+        //         builder: (context) => Cropper(imageFile: File(file!.path))));
 
+        pageController.animateToPage(1,
+            duration: const Duration(milliseconds: 100),
+            curve: Curves.bounceInOut);
         setState(() {
-          imageFile = XFile(croppedFile!.path);
+          imageFile = XFile(file!.path);
           videoController?.dispose();
           videoController = null;
-          controller?.dispose();
+          // controller?.dispose();
         });
 
-        Navigator.pop(context, croppedFile);
+        // Navigator.pop(context, file);
 
         // showInSnackBar('Picture saved to ${file.path}');
       }
@@ -1173,6 +1440,14 @@ class CameraApp extends StatelessWidget {
 }
 
 List<CameraDescription> _cameras = <CameraDescription>[];
+
+Future<dynamic> _saveScreenShot(ui.Image img) async {
+  var byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+  var buffer = byteData!.buffer.asUint8List();
+  // final result = await ImageGallerySaver.saveImage(buffer);
+
+  return buffer;
+}
 
 Future<void> main() async {
   // Fetch the available cameras before initializing the app.
